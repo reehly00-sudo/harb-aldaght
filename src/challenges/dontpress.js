@@ -3,7 +3,7 @@
 const SAFE = ['🥁', '⚡', '🔥', '🎯', '⭐'];
 const TTL = 700, GRACE = 220;
 module.exports = {
-  id: 'dontpress', name: 'لا تضغط', hint: 'اضغط عند كل إشارة… إلا الجمجمة 💀 فلا تلمسها!', duration: 12000,
+  id: 'dontpress', name: 'لا تضغط', hint: 'اضغط عند كل إشارة… إلا الجمجمة 💀 فلا تلمسها!', duration: 10000,
   init(ids) {
     const st = { score: {}, cur: null, hit: new Set(), i: 0 };
     ids.forEach((i) => { st.score[i] = 0; });

@@ -2,7 +2,7 @@
 // رد الفعل — السيرفر وحده يعرف لحظة الإشارة ويقيس الزمن.
 const MIN_HUMAN_MS = 70;
 module.exports = {
-  id: 'reaction', name: 'رد الفعل', hint: 'انتظر الإشارة الخضراء ثم اضغط فورًا. الضغط المبكر يُخرجك!', duration: 9000, lowerIsBetter: true,
+  id: 'reaction', name: 'رد الفعل', hint: 'انتظر الإشارة الخضراء ثم اضغط فورًا. الضغط المبكر يُخرجك!', duration: 8000, lowerIsBetter: true,
   init(ids) {
     return { cfg: {}, st: { delay: 1500 + Math.random() * 3500, goAt: null, res: {}, n: ids.length } };
   },

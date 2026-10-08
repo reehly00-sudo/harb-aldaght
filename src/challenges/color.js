@@ -8,7 +8,7 @@ const COLORS = [
 const MIN_GAP = 120;
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 module.exports = {
-  id: 'color', name: 'تحدي اللون', hint: 'اضغط اللون الذي تقوله الكلمة، لا لون الحبر!', duration: 12000,
+  id: 'color', name: 'تحدي اللون', hint: 'اضغط اللون الذي تقوله الكلمة، لا لون الحبر!', duration: 10000,
   init(ids) {
     const seq = [];
     for (let k = 0; k < 70; k++) {

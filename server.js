@@ -94,8 +94,8 @@ const routes = {
   'POST /api/login': async (req) => login(req, await readBody(req)),
   'GET /api/me': (req, url) => ({ me: db.me(auth(req, url).id) }),
 
-  'POST /api/room/create': (req, url) => { const u = auth(req, url); limit('create:' + u.id, 6, 60000); return { code: hub.create(u).code }; },
-  'POST /api/room/join': async (req, url) => { const u = auth(req, url); limit('join:' + u.id, 20, 60000); return { code: hub.join(u, (await readBody(req)).code).code }; },
+  'POST /api/room/create': async (req, url) => { const u = auth(req, url); limit('create:' + u.id, 6, 60000); return { code: hub.create(u, (await readBody(req)).avatar).code }; },
+  'POST /api/room/join': async (req, url) => { const u = auth(req, url); limit('join:' + u.id, 20, 60000); const b = await readBody(req); return { code: hub.join(u, b.code, b.avatar).code }; },
   'POST /api/room/leave': (req, url) => { hub.leave(auth(req, url).id); return {}; },
   'POST /api/room/act': async (req, url) => { const u = auth(req, url), b = await readBody(req); hub.act(u, b.type, b); return {}; },
   'POST /api/play': async (req, url) => hub.play(auth(req, url), await readBody(req)),

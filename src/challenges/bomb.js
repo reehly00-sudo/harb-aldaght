@@ -2,7 +2,7 @@
 // الزر المفخخ — مكان القنبلة سرّي في السيرفر ومختلف لكل لاعب.
 const CELLS = 9;
 module.exports = {
-  id: 'bomb', name: 'الزر المفخخ', hint: 'كل زر آمن يزيد نقاطك أكثر… وزر واحد يفجّر كل ما جمعت. متى تتوقف؟', duration: 9000,
+  id: 'bomb', name: 'الزر المفخخ', hint: 'كل زر آمن يزيد نقاطك أكثر… وزر واحد يفجّر كل ما جمعت. متى تتوقف؟', duration: 7000,
   init(ids) {
     const st = { p: {} };
     ids.forEach((i) => { st.p[i] = { bomb: Math.floor(Math.random() * CELLS), open: new Set(), dead: false }; });

@@ -8,7 +8,7 @@
   const num = (n) => Number(n || 0).toLocaleString('en-US');
 
   const S = { me: null, token: store.get('hp_token'), room: null, view: 'home', range: 'day', offset: 0, es: null,
-    live: null, liveKey: '', roomKey: '', lastCount: 0, lbTimer: 0, profile: null,
+    live: null, liveKey: '', av: store.get('hp_av') === '' ? -1 : Number(store.get('hp_av')), roomKey: '', lastCount: 0, lbTimer: 0, profile: null,
     pending: (new URLSearchParams(location.search).get('room') || '').toUpperCase() };
   const now = () => Date.now() + S.offset;
 
@@ -49,6 +49,8 @@
   const who = (p, ownerId) => `<span class="nm ${tier(p.level)}">${esc(p.name)}</span>`
     + (p.founder ? '<span class="tag founder">👑 المؤسس</span>' : ownerId === p.id ? '<span class="tag host">👑 المضيف</span>' : '')
     + (p.badge ? `<span class="tag">${esc(p.badge)}</span>` : '');
+  const myAv = () => (S.av >= 0 && S.av < FUN.CHARS.length ? S.av : S.me.id % FUN.CHARS.length);
+  const av = (i, cls = '', extra = '') => `<span class="av ${cls}" ${extra}>${FUN.char(i)}</span>`;
   const medal = (r) => ['🥇', '🥈', '🥉'][r - 1] || r;
   let toastT;
   function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 2800); }
@@ -71,7 +73,7 @@
     clearInterval(S.lbTimer);
     if (!S.me) return viewLogin();
     if (S.room) return viewRoom();
-    stopLive(); S.roomKey = '';
+    stopLive(); S.roomKey = ''; FUN.scene(null);
     ({ home: viewHome, board: viewBoard, profile: viewProfile }[S.view] || viewHome)();
   }
   const page = (cls, html) => { app.innerHTML = `<section class="view ${cls}">${html}</section>`; };
@@ -96,7 +98,7 @@
       if (r.needKey) return silent ? viewLogin() : viewLogin(r.error, true);
       S.token = r.token; S.me = r.me; store.set('hp_token', r.token); store.set('hp_name', r.me.name);
       connect(); render();
-      if (S.pending) { const c = S.pending; S.pending = ''; history.replaceState(null, '', '/'); await tryApi('room/join', { code: c }); }
+      if (S.pending) { const c = S.pending; S.pending = ''; history.replaceState(null, '', '/'); await tryApi('room/join', { code: c, avatar: myAv() }); }
     } catch (e) {
       if (silent) { S.token = ''; store.set('hp_token', ''); return viewLogin(); }
       viewLogin(e.message, !!e.data?.needKey);
@@ -106,7 +108,7 @@
   function meCard(m) {
     const max = m.level >= 200, pct = max ? 100 : Math.round((100 * m.into) / m.need);
     return `<div class="card mecard ${tier(m.level)}">
-      <div class="row">${who(m)}<span class="spacer"></span>${lv(m.level)}</div>
+      <div class="row"><button class="av pick" data-act="avatarSheet" type="button" aria-label="تغيير الشخصية">${FUN.char(myAv())}</button>${who(m)}<span class="spacer"></span>${lv(m.level)}</div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <div class="xp"><span>${max ? 'MAX' : `XP ${num(m.into)} / ${num(m.need)}`}</span><span>${num(m.xp)} XP</span></div>
     </div>`;
@@ -126,16 +128,17 @@
   // ----- الغرفة -----
   function viewRoom() {
     const r = S.room, ph = r.phase;
-    const key = ph === 'intro' || ph === 'active' ? `${ph}:${r.round}` : [ph, r.round, r.ownerId, r.roundsTotal, r.players.map((p) => p.id + (p.online ? '' : 'x') + p.level + p.badge).join()].join(':');
+    const key = ph === 'intro' || ph === 'active' ? `${ph}:${r.round}` : [ph, r.round, r.ownerId, r.roundsTotal, r.players.map((p) => p.id + (p.online ? '' : 'x') + p.level + p.badge + '.' + p.avatar).join()].join(':');
     if (key === S.roomKey) return;
     const phaseChanged = S.roomKey.split(':')[0] !== ph || ph === 'intro' || ph === 'active' || ph === 'results';
     S.roomKey = key;
     if (ph !== 'active') stopLive();
+    FUN.scene(ph === 'intro' || ph === 'active' || ph === 'results' ? FUN.placeFor(r.code, r.round) : null);
     if (sheet.open && ph !== 'lobby' && ph !== 'final') sheet.close();
     ({ lobby: roomLobby, intro: roomIntro, active: roomActive, results: roomResults, final: roomFinal })[ph](r, phaseChanged);
   }
   const mine = (r) => r.ownerId === S.me.id;
-  const plist = (r) => `<ul class="plist">${r.players.map((p) => `<li class="${p.id === S.me.id ? 'me' : ''} ${p.online ? '' : 'off'}"><span class="pw">${who(p, r.ownerId)}</span>${lv(p.level)}<button class="more" data-act="player" data-id="${p.id}" type="button" aria-label="خيارات ${esc(p.name)}">⋯</button></li>`).join('')}</ul>`;
+  const plist = (r) => `<ul class="plist">${r.players.map((p) => `<li class="${p.id === S.me.id ? 'me' : ''} ${p.online ? '' : 'off'}">${p.id === S.me.id ? `<button class="av pick bob" data-act="avatarSheet" type="button" aria-label="تغيير الشخصية">${FUN.char(p.avatar)}</button>` : av(p.avatar, 'bob')}<span class="pw">${who(p, r.ownerId)}</span>${lv(p.level)}<button class="more" data-act="player" data-id="${p.id}" type="button" aria-label="خيارات ${esc(p.name)}">⋯</button></li>`).join('')}</ul>`;
   function roomLobby(r) {
     const owner = mine(r), enough = r.players.length >= r.min;
     page('room', `
@@ -151,42 +154,56 @@
   }
   function roomIntro(r) {
     S.lastCount = 0;
-    page('intro', `<p class="rnd">الجولة ${r.round} من ${r.roundsTotal}</p><h2>${esc(r.challenge.name)}</h2><p class="sub">${esc(r.challenge.hint)}</p><div class="count" id="count"></div>`);
+    const pl = FUN.placeFor(r.code, r.round);
+    page('intro', `<p class="place">📍 ${pl.name} ${pl.icon}</p><p class="rnd">الجولة ${r.round} من ${r.roundsTotal}</p>
+      <div class="chicon">${FUN.ICONS[r.challenge.id] || '🎮'}</div><h2>${esc(r.challenge.name)}</h2><p class="sub">${esc(r.challenge.hint)}</p>
+      <div class="lineup">${r.players.map((p, i) => av(p.avatar, 'bob' + (p.id === S.me.id ? ' mine' : ''), `style="animation-delay:${-i * 0.13}s"`)).join('')}</div>
+      <div class="count" id="count"></div>`);
     tick();
   }
   function roomActive(r) {
     const c = r.challenge, key = 'r' + r.round;
     if (S.liveKey === key) return;
     stopLive(); S.liveKey = key;
-    page('play', `<div class="hud"><small>الجولة ${r.round} من ${r.roundsTotal}</small><b id="secs"></b><span>${esc(c.name)}</span><div class="bar"><i id="tbar"></i></div></div><div class="stage" id="stage"></div>`);
+    page('play', `<div class="hud"><small>الجولة ${r.round} من ${r.roundsTotal}</small><b id="secs"></b><span>${esc(c.name)}</span><div class="bar"><i id="tbar"></i></div></div>
+      <div class="buddy"><em class="av" id="myav">${FUN.char((r.players.find((p) => p.id === S.me.id) || {}).avatar)}</em><p id="say" aria-live="polite"></p></div><div class="stage" id="stage"></div>`);
     const mod = window.CHALLENGES[c.id];
     if (!mod) { $('#stage').innerHTML = '<p class="tip">هذا التحدي غير مدعوم في نسختك. حدّث الصفحة.</p>'; return; }
     S.live = mod.mount($('#stage'), c.cfg, { send: play, players: r.players, meId: S.me.id, timeLeft: () => c.endAt - now() }) || {};
     S.live.endAt = c.endAt;
+    FUN.liveOn(c.id);
     tick();
   }
-  function stopLive() { if (S.live) { try { S.live.stop?.(); } catch {} } S.live = null; S.liveKey = ''; }
+  function stopLive() { FUN.liveOff(); if (S.live) { try { S.live.stop?.(); } catch {} } S.live = null; S.liveKey = ''; }
   function roomResults(r) {
     const res = r.results, meRow = res.rows.find((x) => x.id === S.me.id);
-    page('results', `<p class="rnd center" style="color:var(--sun);font-weight:700">الجولة ${r.round} من ${r.roundsTotal}</p><h2 class="center">${esc(res.challenge.name)}</h2>
-      <ul class="rows">${res.rows.map((x) => `<li class="${x.id === S.me.id ? 'me' : ''} ${x.rank === 1 && x.points ? 'first' : ''}"><span class="medal">${x.points ? medal(x.rank) : '—'}</span>
+    const mood = !meRow ? '' : meRow.rank === 1 && meRow.points ? 'win' : meRow.points ? 'mid' : 'lose';
+    const dots = Array.from({ length: r.roundsTotal }, (_, i) => `<i class="${i < r.round ? 'on' : ''}"></i>`).join('');
+    const wait = Math.max(500, res.nextAt - now());
+    page('results', `
+      <div class="rhead">${meRow ? av(meRow.avatar, 'big ' + (mood === 'win' ? 'dance' : mood === 'lose' ? 'droop' : 'bob')) : ''}
+        <div><h2>${mood ? FUN.phrase(mood) : esc(res.challenge.name)}</h2><p class="rnd">${FUN.ICONS[res.challenge.id] || ''} ${esc(res.challenge.name)}</p><div class="dots" aria-label="الجولة ${r.round} من ${r.roundsTotal}">${dots}</div></div></div>
+      <ul class="rows">${res.rows.map((x) => `<li class="${x.id === S.me.id ? 'me' : ''} ${x.rank === 1 && x.points ? 'first' : ''}"><span class="medal">${x.points ? medal(x.rank) : '—'}</span>${av(x.avatar, 'sm ' + (x.rank === 1 && x.points ? 'dance' : x.points ? '' : 'droop'))}
         <span class="who"><span>${who(x)}</span><small>${esc(x.label)}</small></span><span class="sp"></span><span class="pts">+${x.points}</span></li>`).join('')}</ul>
+      <div class="nextbar"><i style="animation-duration:${wait}ms"></i></div>
       <p class="note">${res.last ? 'النتيجة النهائية بعد لحظات…' : 'الجولة التالية بعد لحظات…'}</p>`);
-    if (meRow) { if (meRow.rank === 1 && meRow.points) { SFX.win(); SFX.buzz(60); } else if (!meRow.points) SFX.lose(); else SFX.good(); }
+    if (mood === 'win') { SFX.win(); SFX.buzz(60); FUN.rain(['⭐', '🎉', '✨'], 8); }
+    else if (mood === 'lose') { SFX.lose(); FUN.rain(['💧', '😭'], 6); }
+    else if (mood) SFX.boing();
   }
   function roomFinal(r, fresh) {
     const f = r.final, top = f[0], meRow = f.find((x) => x.id === S.me.id), owner = mine(r);
     const titles = ['🏆 المركز الأول', '🥈 المركز الثاني', '🥉 المركز الثالث'];
     page('final', `
-      <div class="champ"><div class="cup">🏆</div><span class="note">المركز الأول</span><span class="nm ${tier(top.level)}">${esc(top.name)}</span></div>
-      <ul class="rows">${f.map((x) => `<li class="${x.id === S.me.id ? 'me' : ''} ${x.place === 1 ? 'first' : ''}"><span class="medal">${medal(x.place)}</span>
+      <div class="champ"><div class="cup">🏆</div>${av(top.avatar, 'huge dance')}<span class="note">المركز الأول</span><span class="nm ${tier(top.level)}">${esc(top.name)}</span></div>
+      <ul class="rows">${f.map((x) => `<li class="${x.id === S.me.id ? 'me' : ''} ${x.place === 1 ? 'first' : ''}"><span class="medal">${medal(x.place)}</span>${av(x.avatar, 'sm ' + (x.place === 1 ? 'dance' : x.place === f.length && f.length > 1 ? 'droop' : 'bob'))}
         <span class="who"><span>${who(x)} ${lv(x.level)}</span><small>${titles[x.place - 1] || 'المركز ' + x.place}</small></span><span class="sp"></span>
         <span class="pts">${num(x.total)}<small>+${x.xp} XP</small></span></li>`).join('')}</ul>
       <div class="spacer"></div>
       ${owner ? '<button class="btn hot" data-act="start" type="button">العب مباراة جديدة</button><button class="btn" data-act="lobby" type="button">العودة لقائمة اللاعبين</button>' : '<p class="note">بانتظار المضيف لبدء مباراة جديدة…</p>'}
       <button class="btn ghost" data-act="leave" type="button">مغادرة الغرفة</button>`);
     if (!fresh || !meRow) return;
-    if (meRow.place === 1) { confetti(); SFX.win(); SFX.buzz(150); } else SFX.lose();
+    if (meRow.place === 1) { confetti(); SFX.win(); SFX.buzz(150); } else { SFX.lose(); if (meRow.place === f.length) FUN.rain(['💧', '😭'], 6); }
     if (meRow.level > meRow.levelBefore) setTimeout(() => levelUp(meRow.level), 900);
   }
   // مؤقت العدّ التنازلي وشريط الوقت
@@ -200,7 +217,7 @@
     } else if (r.phase === 'active') {
       const left = Math.max(0, c.endAt - now()), s = $('#secs'), b = $('#tbar'); if (!s) return;
       s.textContent = Math.ceil(left / 1000); b.style.width = (100 * left) / c.duration + '%';
-      if (left <= 0 && S.live) { try { S.live.stop?.(); } catch {} }
+      if (left <= 0 && S.live) { FUN.liveOff(); try { S.live.stop?.(); } catch {} }
     } else return;
     setTimeout(tick, 100);
   }
@@ -267,12 +284,20 @@
     settings: settingsSheet,
     closeSheet() { sheet.close(); },
     toggle(b) { const k = b.dataset.k; SFX[k] = !SFX[k]; b.setAttribute('aria-pressed', SFX[k]); if (SFX[k]) { k === 'sound' ? SFX.good() : SFX.buzz(30); } },
-    create() { tryApi('room/create', {}); },
+    create() { tryApi('room/create', { avatar: myAv() }); },
+    avatarSheet() {
+      const cur = S.room ? (S.room.players.find((p) => p.id === S.me.id) || {}).avatar : myAv();
+      openSheet(`<h3>اختر شخصيتك</h3><div class="avgrid">${FUN.CHARS.map((c, i) => `<button class="av ${i === cur ? 'on' : ''}" data-act="avatar" data-i="${i}" type="button" aria-label="شخصية ${i + 1}">${c}</button>`).join('')}</div><p class="note">الشخصيات للشكل فقط، وكلها متساوية في اللعب.</p>`);
+    },
+    avatar(b) {
+      S.av = Number(b.dataset.i); store.set('hp_av', String(S.av)); SFX.boing(); sheet.close();
+      if (S.room) roomAct('avatar', { value: S.av }); else render();
+    },
     joinSheet() {
       openSheet(`<h3>🔑 دخول غرفة</h3><input id="code" class="field" maxlength="5" autocapitalize="characters" autocomplete="off" placeholder="كود الغرفة" dir="ltr" aria-label="كود الغرفة"><button class="btn sun" data-act="join" type="button">دخول الغرفة</button>`);
       const i = $('#code'); i.focus(); i.addEventListener('keydown', (e) => { if (e.key === 'Enter') actions.join(); });
     },
-    async join() { const code = $('#code').value.trim(); if (!code) return toast('اكتب كود الغرفة.'); if (await tryApi('room/join', { code })) sheet.close(); },
+    async join() { const code = $('#code').value.trim(); if (!code) return toast('اكتب كود الغرفة.'); if (await tryApi('room/join', { code, avatar: myAv() })) sheet.close(); },
     leave() { tryApi('room/leave', {}); },
     start() { roomAct('start'); },
     lobby() { roomAct('lobby'); },

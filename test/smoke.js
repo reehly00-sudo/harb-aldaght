@@ -88,7 +88,7 @@ const until = async (fn, ms = 20000, what = '') => { const t = Date.now(); while
       const ch8 = rows.find((r) => r.name === 'Cheater');
       assert.ok(ch8.flagged && ch8.points === 0, 'نتيجة الغشاش مرفوضة');
       assert.equal(rows[0].name, 'Fahad');
-      assert.ok(rows[0].raw <= 153, 'سقف الضغطات');
+      assert.ok(rows[0].raw <= 123, 'سقف الضغطات');
     }
   }
   assert.equal(seen[0], 'tap');

@@ -3,7 +3,7 @@
 const MAX_CPS = 15;        // أقصى معدل بشري منطقي
 const FLAG_OVER = 25;      // ضغطات فوق السقف قبل رفض النتيجة
 module.exports = {
-  id: 'tap', name: 'الضغط السريع', hint: 'اضغط بأسرع ما تستطيع!', duration: 10000,
+  id: 'tap', name: 'الضغط السريع', hint: 'اضغط بأسرع ما تستطيع!', duration: 8000,
   init(ids) {
     const st = { c: {}, over: {} };
     ids.forEach((i) => { st.c[i] = 0; st.over[i] = 0; });
