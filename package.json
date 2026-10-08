@@ -1,0 +1,12 @@
+{
+  "name": "harb-aldaght",
+  "version": "1.0.0",
+  "description": "حرب الضغط — لعبة ويب اجتماعية تنافسية سريعة (تصميم Keep)",
+  "main": "server.js",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "test": "node --disable-warning=ExperimentalWarning test/smoke.js"
+  }
+}
