@@ -1,0 +1,31 @@
+name: Extract Project
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          unzip -o harb-aldaght.zip -d extracted
+          find extracted -mindepth 1 -maxdepth 1 -type d -exec cp -R {}/. . \;
+          find extracted -mindepth 1 -maxdepth 1 -type f -exec cp -R {} . \;
+          rm -rf extracted
+          rm -f harb-aldaght.zip
+
+      - name: Commit extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "Extract project files"
+          git push
